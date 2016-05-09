@@ -1,8 +1,9 @@
 extern int interrupt (int number, int AX, int BX, int CX, int DX);
+extern void loadProgram();
 extern void makeInterrupt21();
 void printChar(char chr);
 void printString(char* string);
-void readString(char buffer[]);
+void readString(char * buffer);
 void addTerminationChars(char buffer[],int index);
 void backSpace();
 void writeInBuffer();
@@ -14,10 +15,13 @@ void println();
 
 int main(){
   
-  char line[80];  
-  makeInterrupt21();
-  interrupt(0x21,1,line,0,0);
-  interrupt(0x21,0,line,0,0);
+  //char line[80]; 
+  //char buffer[512]; 
+   //makeInterrupt21();
+   //interrupt(0x21,1,line,0,0);
+   //interrupt(0x21,0,line,0,0);
+   makeInterrupt21();
+   loadProgram();   
    while(1){}
    return 0;
 }

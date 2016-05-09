@@ -6,8 +6,9 @@
 	.global _putInMemory
 	.global _interrupt
 	.global _makeInterrupt21
+    .global _loadProgram
 	.extern _handleInterrupt21
-
+    
 ;void putInMemory (int segment, int address, char character)
 _putInMemory:
 	push bp
@@ -61,6 +62,25 @@ _makeInterrupt21:
 	mov [si],dx	;set up our vector
 	pop ds
 	ret
+	
+	; Load a program from sector 11 into segment 0x20000
+_loadProgram:
+    mov ax, #0x2000
+    mov ds, ax
+    mov ss, ax
+    mov es, ax ;let's have the stack start at 0x2000:fff0
+    mov ax, #0xfff0
+    mov sp, ax
+    mov bp, ax ; Read the program from the floppy
+    mov cl, #12 ;cl holds sector number
+    mov dh, #0 ;dh holds head number - 0
+    mov ch, #0 ;ch holds track number - 0
+    mov ah, #2 ;absolute disk read
+    mov al, #1 ;read 1 sector
+    mov dl, #0  ;read from floppy disk A
+    mov bx, #0   ;read into offset 0 (in the segment)
+    int #0x13  ;call BIOS disk read function
+    jmp #0x2000:#0  ; Switch to program
 
 ;this is called when interrupt 21 happens
 ;it will call your function:
@@ -76,3 +96,4 @@ _interrupt21ServiceRoutine:
 	pop cx
 	pop dx
 	iret
+    
