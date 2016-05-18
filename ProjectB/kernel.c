@@ -1,42 +1,28 @@
 extern int interrupt (int number, int AX, int BX, int CX, int DX);
 extern void loadProgram();
 extern void makeInterrupt21();
-void printChar(char chr);
+extern void printChar(char chr);
 void printString(char* string);
 void readString(char * buffer);
 void addTerminationChars(char buffer[],int index);
 void backSpace();
-void writeInBuffer();
 void readSector(char *buffer,int sector);
 void handleInterrupt21(int ax, int bx, int cx, int dx);
 int mod(int a,int b);
+extern int readChar();
 void println();
 
 
 int main(){
-  
-  //char line[80]; 
-  //char buffer[512]; 
-   //makeInterrupt21();
-   //interrupt(0x21,1,line,0,0);
-   //interrupt(0x21,0,line,0,0);
    makeInterrupt21();
    loadProgram();   
    while(1){}
    return 0;
 }
 
-
 void println(){
   printChar('\r');
   printChar('\n');
-}
-
-void printChar(char chr){
-  char al = chr;
-  char ah = 0xE;
-  int ax = ah * 256 + al; 
-  interrupt(0x10, ax, 0, 0, 0);
 }
 
 void printString(char * string){
@@ -47,22 +33,22 @@ void printString(char * string){
 }
 
 void readString(char buffer[]){ 
-  int readedchar=0; 
+  char currentChar; 
   int i=0;  
-  while(readedchar!=0xd && i<78 ){
-    readedchar=interrupt(0x16,0,0,0,0); 
-    if(readedchar==0x8 && i>0){
-      backSpace((char)readedchar);
+  while(currentChar!=0xd && i<79 ){
+    currentChar=readChar(); 
+    if(currentChar==0x8 && i>0){
+      backSpace((char)currentChar);
       i--;
-    }else if(readedchar!=0x8){       
-      writeInBuffer(buffer,(char)readedchar,i);
+    }else if(currentChar!=0x8){ 
+      buffer[i]=currentChar;      
+      printChar(currentChar);
       i++;
     }
   }
   addTerminationChars(buffer,i);
   println();
 }
-
 
 void backSpace(char chr){
   printChar(chr);
@@ -74,12 +60,6 @@ void addTerminationChars(char buffer[],int index){
    buffer[index]=(char)0xa;
    buffer[index+1]=(char)0x0;
 }
-
-void writeInBuffer(char buffer[],char chr,int index){
-      buffer[index]=chr;
-      printChar(chr);
-}
-
 
 void readSector(char* buffer,int sector){
  int relativeSector = mod(sector,18)+1;

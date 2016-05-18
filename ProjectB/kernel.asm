@@ -8,7 +8,29 @@
 	.global _makeInterrupt21
     .global _loadProgram
 	.extern _handleInterrupt21
+	.global _printChar
+	.global _readChar
     
+	
+	
+;void printChar(char chr);
+_printChar:
+	push bp
+	mov bp, sp
+	mov al, [bp+4]  
+	mov ah, #0x0e			
+	int #0x10
+	pop bp
+	ret
+		
+_readChar:
+	push bp
+	mov bp, sp
+	int #0x16
+	pop bp
+	ret
+	
+int 0x10
 ;void putInMemory (int segment, int address, char character)
 _putInMemory:
 	push bp
