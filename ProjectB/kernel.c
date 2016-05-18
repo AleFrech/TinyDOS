@@ -9,7 +9,7 @@ void backSpace();
 void readSector(char *buffer,int sector);
 void handleInterrupt21(int ax, int bx, int cx, int dx);
 int mod(int a,int b);
-extern int readChar();
+extern char readChar();
 void println();
 
 
@@ -35,7 +35,7 @@ void printString(char * string){
 void readString(char buffer[]){ 
   char currentChar; 
   int i=0;  
-  while(currentChar!=0xd && i<79 ){
+  while(currentChar!=0xd && i<78 ){
     currentChar=readChar(); 
     if(currentChar==0x8 && i>0){
       backSpace((char)currentChar);
