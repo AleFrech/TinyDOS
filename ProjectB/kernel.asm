@@ -7,13 +7,11 @@
 	.global _interrupt
 	.global _makeInterrupt21
     .global _loadProgram
-	.extern _handleInterrupt21
 	.global _printChar
 	.global _readChar
 	.global _readSector
+	.extern _handleInterrupt21
     
-	
-	
 ;void printChar(char chr);
 _printChar:
 	push bp
@@ -34,32 +32,33 @@ _readSector:
 	mov bp, sp
 	sub sp, #6
 	mov bx, [bp+4]
-	mov ax, [bp+6]
-	mov cl, #36
-	div cl
-	xor ah, ah
-	mov [bp-2], ax
-	mov ax, [bp+6]
-	mov cl, #18
-	div cl
-	and al, #0x1
-	xor dx, dx
-	mov dl, al
-	mov [bp-4], dx
-	inc ah
-	xor dx, dx
-	mov dl, ah
-	mov [bp-6], dx
-	mov ah, #0x2 	
-	mov al, #0x1
-	mov ch, [bp-2]
-	mov cl, [bp-6]
-	mov dh, [bp-4]
-	mov dl, #0 
-	int #0x13
-	add sp, #6
+	mov ax, [bp+6] ;sector
+	mov cl, #36 ;track del sector
+	div cl 
+	mov ah,0
+	mov [bp-2],ax ;ax = track
+	mov ax, [bp+6] ;sector
+	mov cl, #18 ;calc head
+	div cl	
+	and al, #0x1 ; cambiando resultado a residuo
+	mov dx,0
+	mov dl, al   ; mov residuo a dl
+	mov [bp-4], dx ;head 
+	add ah,#1     ; relative sector +1
+	mov dx,0 ;cleaning dx
+	mov dl, ah  ;ya contiene el valor (sector mod 18) + 1 ah = +1 al = sector mod 18
+	mov [bp-6], dx ;relative sector
+	mov ah, #0x2 	;bios read sector call
+	mov al, #0x1 ;leer solo un sector
+	mov ch, [bp-2] ;track 
+	mov cl, [bp-6] ;relative sector
+	mov dh, [bp-4] ; head number
+	mov dl, #0  ;floppy image use 0
+	int #0x13 
+	add sp,#6 ; nivelar la pila
 	pop bp
 	ret
+	
 ;void putInMemory (int segment, int address, char character)
 _putInMemory:
 	push bp
@@ -91,7 +90,6 @@ _interrupt:
 	mov dx,[bp+12]
 
 intr:	int #0x00	;call the interrupt (00 will be changed above)
-
 	mov ah,#0	;we only want AL returned
 	pop bp
 	ret
