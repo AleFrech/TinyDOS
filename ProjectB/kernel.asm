@@ -10,6 +10,7 @@
 	.extern _handleInterrupt21
 	.global _printChar
 	.global _readChar
+	.global _readSector
     
 	
 	
@@ -24,13 +25,41 @@ _printChar:
 	ret
 		
 _readChar:
-	push bp
-	mov bp, sp
 	int #0x16
-	pop bp
 	ret
 	
-int 0x10
+;_readSector(char *buffer, int sector)
+_readSector:
+	push bp
+	mov bp, sp
+	sub sp, #6
+	mov bx, [bp+4]
+	mov ax, [bp+6]
+	mov cl, #36
+	div cl
+	xor ah, ah
+	mov [bp-2], ax
+	mov ax, [bp+6]
+	mov cl, #18
+	div cl
+	and al, #0x1
+	xor dx, dx
+	mov dl, al
+	mov [bp-4], dx
+	inc ah
+	xor dx, dx
+	mov dl, ah
+	mov [bp-6], dx
+	mov ah, #0x2 	
+	mov al, #0x1
+	mov ch, [bp-2]
+	mov cl, [bp-6]
+	mov dh, [bp-4]
+	mov dl, #0 
+	int #0x13
+	add sp, #6
+	pop bp
+	ret
 ;void putInMemory (int segment, int address, char character)
 _putInMemory:
 	push bp
