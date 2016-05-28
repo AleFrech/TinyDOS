@@ -1,49 +1,45 @@
 extern int interrupt (int number, int AX, int BX, int CX, int DX);
-extern char readChar();
-extern void putInMemory (int segment, int address, char character);
+int readFile (char *fileName, char *buffer);
 extern void loadProgram();
+extern void launchProgram(int segment);
+void executeProgram(char* programName, int segment);
 extern void makeInterrupt21();
 extern void printChar(char chr);
-extern void launchProgram(int segment);
-extern void readSector(char *buffer,int sector);
-void executeProgram(char* programName, int segment);
 void printString(char* string);
 void readString(char * buffer);
 void addTerminationChars(char buffer[],int index);
 void backSpace();
-void terminate();
-int readFile(char *fileName,char* buffer);
+extern void readSector(char *buffer,int sector);
 void handleInterrupt21(int ax, int bx, int cx, int dx);
+extern char readChar();
 void println();
-char cmd[6];
+char cmd[5];
 
 
 int main(){
-  
-  char buffer[13312];
-  makeInterrupt21();
+   char buffer[13312]; 
    cmd[0] = 's';
    cmd[1] = 'h';
    cmd[2] = 'e';
    cmd[3] = 'l';
    cmd[4] = 'l';
    cmd[5] = '\0';
-  interrupt(0x21,4,cmd,0x2000,0);
-   while(1){asm "hlt";}
+   makeInterrupt21();
+   interrupt(0x21,4,cmd,0x2000,0);
+   while(1);
    return 0;
 }
 
+void println(){
+  printChar('\r');
+  printChar('\n');
+}
 
 void printString(char * string){
   int i;
   for(i=0;string[i]!='\0';i++){
  		printChar(string[i]);
  	}
-}
-
-void println(){
-  printChar('\r');
-  printChar('\n');
 }
 
 void readString(char buffer[]){ 
@@ -75,7 +71,6 @@ void addTerminationChars(char buffer[],int index){
    buffer[index+1]=(char)0x0;
 }
 
-
 int readFile (char *fileName, char *buffer){  
     int i;
     char dirBuffer[512];
@@ -102,11 +97,9 @@ int readFile (char *fileName, char *buffer){
 }
 
 void executeProgram(char* programName, int segment){
-    int i;
     char buffer[13312];
     readFile(programName, buffer);
-    for(i=0;i<=13312;i++)
-        putInMemory(segment,i,buffer[i]);    
+    moveToSegment(segment, buffer, 13312);   
     launchProgram(segment);
     interrupt(0x21,5, 0, 0, 0);
 }
@@ -122,6 +115,8 @@ void terminate(){
     interrupt(0x21, 4,cmd, 0x2000, 0);
 }
 
+
+
 void handleInterrupt21(int ax, int bx, int cx, int dx){
   switch(ax){
       case 0:
@@ -134,14 +129,18 @@ void handleInterrupt21(int ax, int bx, int cx, int dx){
          readSector((char*)bx,cx);
          break;
       case 3:
-          readFile((char*)bx,(char*)cx);
-          break;
+         readFile((char*)bx,(char*)cx);
+         break;
       case 4:
-          executeProgram((char*)bx,cx);
-          break;
+         executeProgram((char*)bx,cx);
+         break;
       case 5:
-          terminate();
-          break;
+         terminate();
+         break;
+      case 10:
+         clearScreen();
+         terminate();
+         break;
       default:
          printString("Error Ocurred");
          break;   

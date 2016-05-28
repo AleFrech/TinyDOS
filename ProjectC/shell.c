@@ -5,14 +5,13 @@ void execute(char *args);
 int main(){
     while(1){
        char buffer[30];
-       interrupt(0x21,0,"cmd:>",0,0);
-       interrupt(0x21,1,buffer,0,0);
+       syscall_printString("cmd:>");
+       syscall_readString(buffer);
        commandInterpreter(buffer);
     }
     
     return 0;
 }
-
 
 int strcmp(char *str1,char*str2){
   int i;
@@ -29,18 +28,19 @@ int strcmp(char *str1,char*str2){
   }
 }
 
+
 void type(char *args){
    char buffer[13312];
    int i;
    for(i=0;i<13312;i++){
      buffer[i]=0;
    }
-   interrupt(0x21, 3, args, buffer, 0);
-   interrupt(0x21, 0, buffer, 0, 0);
+   syscall_readFile(args,buffer);
+   syscall_printString(buffer);
 }
 
 void execute(char *args){
-    interrupt(0x21,4,args,0x2000,0);
+   syscall_executeProgram(args,0x2000);
 }
 
 void commandInterpreter(char *buffer){
@@ -50,15 +50,17 @@ void commandInterpreter(char *buffer){
         type(buffer+offset);
     }else if(strcmp("execute",command)){
         execute(buffer+offset);
+    }else if(strcmp("clear",command)){
+        syscall_clearScreen();
     }else{
-       interrupt(0x21,0,"Command not found!!\r\n",0,0); 
+      syscall_printString("Command not found\r\n"); 
     }
 }
 
 int splitBufferCommand(char* buffer,char * command){
   int offset=0;
   while(offset<30){
-    if((buffer[offset]==' ' || buffer[offset]=='\n')){
+    if(buffer[offset]==' ' || buffer[offset]=='\n'){
         command[offset] = '\0';
         offset++;
         break;   
