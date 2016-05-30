@@ -24,10 +24,5 @@ bcc -ansi -c -o shell.o shell.c
 as86 -o os_api.o os_api.asm
 ld86 -o shell -d shell.o os_api.o
 dd if=shell of=floppya.img bs=512 count=1 seek=11 conv=notrunc
-gcc loadFile.c -o loadFile
-./loadFile message.txt
-./loadFile tstprg
-./loadFile tstpr2
-./loadFile shell
 echo "****************************************"
 echo "Done!!!!!!!"
