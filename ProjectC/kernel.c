@@ -9,6 +9,7 @@ void printString(char* string);
 void readString(char * buffer);
 void addTerminationChars(char buffer[],int index);
 void backSpace();
+void ListFiles();
 extern void readSector(char *buffer,int sector);
 void handleInterrupt21(int ax, int bx, int cx, int dx);
 extern char readChar();
@@ -96,6 +97,28 @@ int readFile (char *fileName, char *buffer){
     return -1;
 }
 
+void ListFiles(){  
+    int i;  
+    char dirBuffer[512];
+    char fileName[7]; 
+    readSector(dirBuffer, 2);
+    for(i=0;i<16;i++) {
+        int j;
+        for(j=0;j<6;j++) {
+            if(dirBuffer[i*32+j]==0) 
+               break;
+            fileName[j]=dirBuffer[i*32+j];                
+        }
+        if(j>0){
+            fileName[j] = '\0';
+            printString(fileName);
+            println();
+        }       
+    }
+}
+
+
+
 void executeProgram(char* programName, int segment){
     char buffer[13312];
     readFile(programName, buffer);
@@ -137,6 +160,9 @@ void handleInterrupt21(int ax, int bx, int cx, int dx){
       case 5:
          terminate();
          break;
+      case 6:
+         ListFiles();
+         terminate();
       case 10:
          clearScreen();
          terminate();

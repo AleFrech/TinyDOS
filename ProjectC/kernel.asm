@@ -82,7 +82,7 @@ _putInMemory:
 		
 _clearScreen:
 	mov ah, #6
-	mov al, #0
+	mov al, #0 ;(00 clear entire window)
 	mov bh, #7
 	mov cx, #0
 	mov dh, #24
@@ -93,10 +93,10 @@ _clearScreen:
 	
 _setCursor:
 	mov ah,#2	
-	mov al,#0
+	mov al,#0 
 	mov bl,#0	
-	mov bh,#0	
-	mov dx,#0		
+	mov bh,#0	; page number
+	mov dx,#0	; dh for row (00 is top ) dl column(00 is left)	
 	int #0x10
 	ret
 	

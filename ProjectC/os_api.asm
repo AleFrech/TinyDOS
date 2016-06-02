@@ -5,6 +5,7 @@
 .global _syscall_executeProgram
 .global _syscall_terminate
 .global _syscall_clearScreen
+.global _syscall_listFiles
 
 _syscall_readString:
 	push bp
@@ -32,6 +33,14 @@ _syscall_executeProgram:
 	int #0x21
 	pop bp
 	ret	
+
+_syscall_listFiles:
+	push bp
+	mov bp,sp
+	mov ax, #6
+	int #0x21
+	pop bp
+	ret
 
 _syscall_readFile:
 	push bp

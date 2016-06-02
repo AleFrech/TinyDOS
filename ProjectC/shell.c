@@ -52,8 +52,10 @@ void commandInterpreter(char *buffer){
         execute(buffer+offset);
     }else if(strcmp("clear",command)){
         syscall_clearScreen();
+    }else if(strcmp("ls",command)){
+        syscall_listFiles();
     }else{
-      syscall_printString("Command not found\r\n"); 
+        syscall_printString("Command not found\r\n"); 
     }
 }
 
