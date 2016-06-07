@@ -51,7 +51,7 @@ void type(char *args){
    }
    syscall_readFile(args,buffer);
    syscall_printString(buffer);
-   syscall_printString("\r\n");
+   //syscall_printString("\r\n");
 }
 
 void execute(char *args){
@@ -68,22 +68,53 @@ void Copy(char *args){
   syscall_copyFile(filename1,args+offset);
 }
 
+int div(int a, int b){
+  int quo = 0;
+  while((quo + 1)*b <=a){
+    quo++;
+  }
+  return quo;
+}
+
+int mod(int a, int b){
+  while(a >= b)
+      a = a - b;
+  return a;
+}
+
+int addTerminationCharacters(char*buffer,int offset){
+  buffer[offset]='\r';
+  buffer[offset+1]='\n';
+  return offset+2;
+}
+
 void writeTxt(char *fileName){
-  char currentline[512]; 
+  char currentline[80]; 
   char buffer[13312];
-  int i=0,conSec=0,sec=1; 
-  syscall_readString(buffer);   
-  while(1){  
-    if(currentline[i]=='\n')
-        break;              
-      conSec++;
-      if(conSec==512){
-        conSec=0;
-        sec++;
-      }
-   i++;
-  }  
-  syscall_writeFile(fileName,buffer,sec);  
+  int i=0,offset=0,sec=0;
+  currentline[0]=0x00;
+	syscall_printString("->");
+	while(1){
+			currentline[0]=0x00;
+      syscall_readString(currentline);
+			syscall_printString("->");
+			if (currentline[0] == 0x0){
+				syscall_printString("END OF FILE\r\n");
+				break;
+			}else{
+        for(i=0;i<80;i++){
+          if(offset>= 13312 || currentline[i]==0x0)
+            break;          
+          buffer[offset]=currentline[i];
+          offset++;
+				}
+        offset=addTerminationCharacters(buffer,offset);
+			}
+		}   
+    sec=div(offset,512);
+    if(mod(offset,512)!=0)
+      sec++;  
+    syscall_writeFile(fileName,buffer,sec);
 }
 
 

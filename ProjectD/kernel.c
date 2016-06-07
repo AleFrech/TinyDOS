@@ -46,13 +46,6 @@ void printString(char * string){
  	}
 }
 
-void cleanBuffer(char* buffer, int size){
-	int i = 0;	
-	for(; i<size; i++)
-		buffer[i] = 0x0;
-}
-
-
 void readString(char* buffer){ 
   char currentChar; 
   int i=0;
@@ -146,16 +139,6 @@ void copyFile (char *fileName1, char *fileName2){
   writeFile(fileName2, buffer, secCount);
 }
 
-
-int getNextAvailableSector(char map[512]){
-    int i = 0;
-    for(i = 0; i < 512; i++){
-        if(map[i] == 0x00){
-            return i;
-        }
-    }
-    return -1;
-}
 
 void writeFile(char* fileName, char* buffer, int numberOfSectors){
   int i=0, j=0, k=0, sec=0,m=0;
