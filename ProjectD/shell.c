@@ -68,6 +68,24 @@ void Copy(char *args){
   syscall_copyFile(filename1,args+offset);
 }
 
+void writeTxt(char *fileName){
+  char currentline[512]; 
+  char buffer[13312];
+  int i=0,conSec=0,sec=1; 
+  syscall_readString(buffer);   
+  while(1){  
+    if(currentline[i]=='\n')
+        break;              
+      conSec++;
+      if(conSec==512){
+        conSec=0;
+        sec++;
+      }
+   i++;
+  }  
+  syscall_writeFile(fileName,buffer,sec);  
+}
+
 
 void commandInterpreter(char *buffer){
   char command[30];
@@ -82,6 +100,8 @@ void commandInterpreter(char *buffer){
         Copy(buffer+offset);
     }else if(strcmp("clear",command)){
         syscall_clearScreen();
+    }else if(strcmp("create",command)){
+        writeTxt(buffer+offset);
     }else if(strcmp("ls",command)){
         syscall_listFiles();
     }else{

@@ -146,23 +146,25 @@ void copyFile (char *fileName1, char *fileName2){
   writeFile(fileName2, buffer, secCount);
 }
 
+
+int getNextAvailableSector(char map[512]){
+    int i = 0;
+    for(i = 0; i < 512; i++){
+        if(map[i] == 0x00){
+            return i;
+        }
+    }
+    return -1;
+}
+
 void writeFile(char* fileName, char* buffer, int numberOfSectors){
-  int i=0, j=0, k=0, sec=0;
+  int i=0, j=0, k=0, sec=0,m=0;
   char mapSec[512];
   char dirBuffer[512];
   char newSector[512];
-  char sectors[512]; 
   readSector(dirBuffer,2);
   readSector(mapSec,1);
   
-  while(numberOfSectors != j){
-    if(mapSec[i] == 0){
-      sectors[j] = i;
-      mapSec[i] = 0xFF;
-      j++;
-    }
-    i++;
-  }
   for(i = 0; i < 16; i++){
     if(dirBuffer[i*32] == 0){
       for(j = 0; j < 6; j++){
@@ -171,14 +173,21 @@ void writeFile(char* fileName, char* buffer, int numberOfSectors){
         else
           dirBuffer[i*32+j]=0x00;
       }
-      sec = 0;
-      for(j=0;j<numberOfSectors;j++){
-        dirBuffer[i*32+6+j] =sectors[j];
-        for(k=0;k<512;k++){
-          newSector[k]=buffer[sec*512+k];
+      for(k=0;k<numberOfSectors;k++){
+        sec=0;
+        while(sec<512){
+            if(mapSec[sec]==0x00){
+                mapSec[sec]=0xFF;
+                break;
+            }
+            sec++;
         }
-        writeSector(newSector, sectors[j]);
-        sec++;
+        for(m = 0; m <  512; m++){
+            newSector[m] = buffer[k*512 +m];
+        }
+        writeSector(newSector,sec);
+        dirBuffer[i*32+j] =sec;    
+        j++;       
       }
       for(j=0;j<26-numberOfSectors;j++){
         dirBuffer[i*32+6+numberOfSectors+j]=0x00;
@@ -189,8 +198,6 @@ void writeFile(char* fileName, char* buffer, int numberOfSectors){
     }
   }
 }
-
-
 
 
 void ListFiles(){  
