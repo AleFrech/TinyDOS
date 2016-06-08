@@ -1,4 +1,3 @@
-#define strLength 80
 extern int interrupt (int number, int AX, int BX, int CX, int DX);
 extern char readChar();
 extern void loadProgram();

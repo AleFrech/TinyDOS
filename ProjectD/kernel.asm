@@ -5,7 +5,7 @@
 	.global _putInMemory
 	.global _interrupt
 	.global _makeInterrupt21
-    .global _loadProgram
+        .global _loadProgram
 	.global _printChar
 	.global _readChar
 	.global _readSector
@@ -205,7 +205,7 @@ _launchProgram:
 	mov bp,#0xfff0
 
 jump:	jmp #0x0000:0x0000	;and start running (the first 0000 is changed above)
-	
+
 ; Load a program from sector 11 into segment 0x20000
 _loadProgram:
     mov ax, #0x2000
