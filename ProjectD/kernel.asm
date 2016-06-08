@@ -135,14 +135,20 @@ _setCursor:
 	ret
 	
 _moveToSegment:
-	push bp
+	push bp       
 	mov bp, sp
+	push es
+    push si
+    push di
 	mov es, [bp+4]	;segment
-	mov di, #0
-	mov si, [bp+6]	;source Address
-	mov cx, [bp+8]	;size
+	mov di, [bp+6]	;destiny Address
+	mov si, [bp+8]	;source Address
+	mov cx, [bp+10]	;size
 	rep
 	movsb
+    pop di
+    pop si
+    pop es
 	pop bp
 	ret
 

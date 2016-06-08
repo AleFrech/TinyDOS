@@ -75,15 +75,16 @@ void addTerminationChars(char buffer[],int index){
 }
 
 int readFile (char *name, char *buffer){  
-    int i=0,sec=0;
+    int i=0,sec=0,tmp=0;
     char dirBuffer[512];
     readSector(dirBuffer,2);
     for(i=0;i<16;i++) {
         int j=0;
         for(j=0;j<7;j++){
             if(j<6){               
-                if((j==0 && dirBuffer[i*32]==0) || ((name[j]==0 || name[j] == '\n') || dirBuffer[32*i+j]!=0) &&  (name[j]!=dirBuffer[32*i+j]))
-                  break;
+                if(j==0 && dirBuffer[i*32]==0) break;         
+                if((name[j]==0 || name[j] == '\n') && dirBuffer[32*i+j]==0) tmp = 1;
+                if(tmp == 0 && name[j]!=dirBuffer[32*i+j]) break;
             }else{
                 int address=0;
                 sec=0; 
@@ -205,7 +206,7 @@ void ListFiles(){
 void executeProgram(char* programName, int segment){
     char buffer[13312];
     if(readFile(programName, buffer)!=-1){
-        moveToSegment(segment, buffer, 13312);   
+        moveToSegment(segment,0,buffer, 13312);   
         launchProgram(segment);
     }
     interrupt(0x21,5, 0, 0, 0);
