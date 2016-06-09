@@ -132,11 +132,11 @@ void deleteFile(char* name){
 
 
 void copyFile (char *fileName1, char *fileName2){
-  int secCount;
+  int sec;
   char buffer[13312];
   buffer[0]=0x00;
-  secCount = readFile(fileName1, buffer);
-  writeFile(fileName2, buffer, secCount);
+  sec = readFile(fileName1, buffer);
+  writeFile(fileName2, buffer, sec);
 }
 
 
@@ -183,23 +183,76 @@ void writeFile(char* fileName, char* buffer, int numberOfSectors){
 }
 
 
+int div(int a, int b){
+  int quo = 0;
+  while((quo + 1)*b <=a){
+    quo++;
+  }
+  return quo;
+}
+
+int mod(int a, int b){
+  while(a >= b)
+      a = a - b;
+  return a;
+}
+
+
+char GetSizeOfSector(int sec, int index,char* nums){
+  int number=div(sec,index);
+  if(number!=0)
+    return nums[div(sec,index)];
+  return ' ';
+}
+
 void ListFiles(){  
-    int i;  
+    int i=0,sec=0;
     char dirBuffer[512];
-    char name[7]; 
+    char buffer[13312];
+    char fullName[25];
+    char name[7];
+    char num[10];  
+    num[0] = '0';
+    num[1] = '1';
+    num[2] = '2';
+    num[3] = '3';
+    num[4] = '4';
+    num[5] = '5';
+    num[6] = '6';
+    num[7] = '7';
+    num[8] = '8';
+    num[9] = '9';     
     readSector(dirBuffer, 2);
     for(i=0;i<16;i++) {
-        int j;
-        for(j=0;j<6;j++) {
-            if(dirBuffer[i*32+j]==0) 
-               break;
-            name[j]=dirBuffer[i*32+j];                
-        }
-        if(j>0){
+      if(dirBuffer[i*32]!=0){
+         int j;
+         for(j=0;j<6;j++) {
+             if(dirBuffer[i*32+j]==0) 
+                break;
+             name[j]=dirBuffer[i*32+j];
+             fullName[j]=dirBuffer[i*32+j];               
+         }
+         if(j>0){
             name[j] = '\0';
-            printString(name);
-            println();
-        }       
+            fullName[j]=' ';           
+         } 
+         sec=readFile(name,buffer);
+         fullName[j+1]=GetSizeOfSector(sec,1000,num);
+         fullName[j+2]=GetSizeOfSector(sec,100,num);
+         fullName[j+3]=GetSizeOfSector(sec,10,num);
+         fullName[j+4] = num[mod(sec, 10)-1];
+         fullName[j+5] = ' ';
+         fullName[j+6] = 's';
+         fullName[j+7] = 'e';
+         fullName[j+8] = 'c';
+         fullName[j+9] = 't';
+         fullName[j+10] = 'o';
+         fullName[j+11] = 'r';
+         fullName[j+12] = 's';
+         fullName[j+13] = '\0';
+         printString(fullName);
+         println();
+      }      
     }
 }
 
