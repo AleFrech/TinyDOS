@@ -82,6 +82,7 @@ int mod(int a, int b){
   return a;
 }
 
+
 int addTerminationCharacters(char*buffer,int offset){
   buffer[offset]='\r';
   buffer[offset+1]='\n';
@@ -93,6 +94,8 @@ void writeTxt(char *fileName){
   char buffer[13312];
   int i=0,offset=0,sec=0;
   currentline[0]=0x00;
+  for(i=0;i<13312;i++)
+    buffer[i]=0x0;
 	syscall_printString("->");
 	while(1){
 			currentline[0]=0x00;
