@@ -6,7 +6,8 @@ extern void readSector(char *buffer,int sector);
 extern void writeSector(char *buffer,int sector);
 extern void makeInterrupt21();
 extern void printChar(char chr);
-void executeProgram(char* programName, int segment);
+void executeProgram(char* programName);
+void executeWait(char* programName);
 int div(int a, int b);
 int mod(int a, int b);
 void writeFile(char* name, char* buffer, int  numberOfSectors);
@@ -19,24 +20,46 @@ void ListFiles();
 void deleteFile(char* name);
 void handleInterrupt21(int ax, int bx, int cx, int dx);
 void println();
+int secondCont;
 char cmd[5];
 
-int currentProcess;
-struct ProcessInfo{
-    int active;
-    int stackPointer;
+struct PCB {
+unsigned int status;
+unsigned int stackPointer;
+unsigned int segment;
+struct PCB *waiter;
 }ProcessTable[8];
+
+struct regs {
+unsigned int es;
+unsigned int ds;
+unsigned int ax;
+unsigned int bp;
+unsigned int di;
+unsigned int si;
+unsigned int dx;
+unsigned int cx;
+unsigned int bx;
+unsigned int ip;
+unsigned int cs;
+unsigned int flags;
+};
+
+
+
+struct PCB *currentProcess;
 
 int main(){
    int i=0;
-   char buffer[13312]; 
+   secondCont=0;
    for(i=0;i<8;i++){
-       ProcessTable[i].active=0;
+       ProcessTable[i].status=4;
        ProcessTable[i].stackPointer=0xff00;
+       ProcessTable[i].segment=(i+2)*0x1000;
+       ProcessTable[i].waiter=0;
    }
    currentProcess=0;
    makeInterrupt21(); 
-   makeTimerInterrupt();
    cmd[0] = 's';
    cmd[1] = 'h';
    cmd[2] = 'e';
@@ -44,7 +67,8 @@ int main(){
    cmd[4] = 'l';
    cmd[5] = '\0';
    executeProgram(cmd);
-   
+   irqInstallHandler();
+   setTimerPhase(100); 
    while(1);
    return 0;
 }
@@ -163,16 +187,16 @@ void deleteFile(char* name){
 
 
 void copyFile (char *fileName1, char *fileName2){
-  int secCount;
+  int sec;
   char buffer[13312];
   buffer[0]=0x00;
-  secCount = readFile(fileName1, buffer);
-  writeFile(fileName2, buffer, secCount);
+  sec = readFile(fileName1, buffer);
+  if(sec>-1)
+    writeFile(fileName2, buffer, sec-1);
 }
 
-
 void writeFile(char* fileName, char* buffer, int numberOfSectors){
-  int i=0, j=0, k=0, sec=0,m=0;
+  int i=0, j=0, k=0, sec=0,m=0,tmp=0;
   char mapSec[512];
   char dirBuffer[512];
   char newSector[512];
@@ -182,10 +206,12 @@ void writeFile(char* fileName, char* buffer, int numberOfSectors){
   for(i = 0; i < 16; i++){
     if(dirBuffer[i*32] == 0){
       for(j = 0; j < 6; j++){
-        if(fileName[j] != '\0' &&  fileName[j] != '\n')
-           dirBuffer[i*32+j] =fileName[j];
+         if(fileName[j]=='\0' || fileName[j]=='\n')
+         	tmp = 1;
+        if(tmp == 0)
+            dirBuffer[i*32+j]=fileName[j];
         else
-          dirBuffer[i*32+j]=0x00;
+            dirBuffer[i*32+j]=0x00;
       }
       for(k=0;k<numberOfSectors;k++){
         sec=0;
@@ -214,89 +240,171 @@ void writeFile(char* fileName, char* buffer, int numberOfSectors){
 }
 
 
+void intToString(int number){
+	int i = 0,j=0;	
+	char buffer[10];	
+    for(j=0;j<10;j++){
+        buffer[j]=0x0;
+    }
+	while(number!=0){
+		buffer[i] = (char)mod(number,10)+48;
+		number=div(number,10);
+		i++;	
+	}	
+	for(i = 9; i != -1; i--)
+		if(buffer[i]!=0)
+			printChar(buffer[i]);
+}
+
 void ListFiles(){  
-    int i;  
+    int i=0,sec=0;
     char dirBuffer[512];
-   
-    char name[7]; 
-     for(i=0;i<512;i++){
-         dirBuffer[i]=0x00;
-     }
+    char buffer[13312];
+    char name[7];  
     readSector(dirBuffer, 2);
     for(i=0;i<16;i++) {
-        int j;
-        for(j=0;j<6;j++) {
-            if(dirBuffer[i*32+j]==0) 
-               break;
-            name[j]=dirBuffer[i*32+j];                
-        }
-        if(j>0){
-            name[j] = '\0';
-            printString(name);
-            println();
-        }       
+      if(dirBuffer[i*32]!=0){
+         int j;
+         for(j=0;j<6;j++) {
+             if(dirBuffer[i*32+j]==0) 
+                break;
+             name[j]=dirBuffer[i*32+j];              
+         }
+         if(j>0){
+            name[j] = '\0';     
+         }
+         sec=readFile(name,buffer);
+         printString(name);
+         printChar(' ');
+         intToString(sec-1);  
+         println();
+      }      
     }
+}
+
+void terminate(){
+    setKernelDataSegment();
+    currentProcess->status=4;
+    currentProcess->stackPointer=0xff00;
+	if(currentProcess->waiter!=0)
+		currentProcess->waiter->status=1;
+	restoreDataSegment();
+    #asm
+	sti
+	#endasm
+    while(1);
+}
+
+
+void initializeProgram(int segment){
+    struct regs registers;
+	registers.ds = segment;
+	registers.es = segment;
+    registers.cs = segment;
+	registers.ax = 0;
+	registers.bp = 0;
+	registers.di = 0;
+	registers.si = 0;
+	registers.dx = 0;
+	registers.cx = 0;
+	registers.bx = 0;
+	registers.ip = 0;
+	registers.flags = 0x0200;
+	moveToSegment(segment,0xff00,&registers,24);
 }
 
 void executeProgram(char* programName){
     char buffer[13312];
-    int i,segment=0;
+    int i=0,segment=0;
+    setKernelDataSegment();
     for(i=0;i<8;i++){
-        setKernelDataSegment();
-        if(ProcessTable[i].active==0){
-            ProcessTable[i].active=1;
-            segment=(i+2)*0x1000;
-            currentProcess=i;
-            restoreDataSegment();
+        if(ProcessTable[i].status==4){
+            ProcessTable[i].status=1;         
+            segment=ProcessTable[i].segment;
             break;
         }
-        restoreDataSegment();
     }
+    restoreDataSegment();
     if(readFile(programName, buffer)!=-1){ 
         moveToSegment(segment,0, buffer, 13312); 
         initializeProgram(segment);
     }
 }
 
-
-void terminate(){
+void executeWait(char* programName){
+    char buffer[13312];
+    int i=0,segment=0;
     setKernelDataSegment();
-    ProcessTable[currentProcess].active=0;
+    for(i=0;i<8;i++){
+        if(ProcessTable[i].status==4){
+            ProcessTable[i].status=1;
+            ProcessTable[i].waiter=currentProcess;
+            segment=ProcessTable[i].segment;
+            currentProcess->status=2;
+            break;
+        } 
+    }
     restoreDataSegment();
-    while(1);
+    if(readFile(programName, buffer)!=-1){ 
+        moveToSegment(segment,0, buffer, 13312); 
+        initializeProgram(segment);
+    }
+
 }
 
 void killProcess(int id){
   setKernelDataSegment();
-  ProcessTable[id].active = 0;
-  ProcessTable[id].stackPointer = 0xff00;
+  ProcessTable[id-1].status = 4;
+  ProcessTable[id-1].stackPointer = 0xff00;
+  if(ProcessTable[id-1].waiter!=0)
+		ProcessTable[id-1].waiter->status=1;
   restoreDataSegment();
 }
 
-void handleTimerInterrupt(int segment, int sp){
-    int i;
+
+int listProcess(int pointerTable[]){
+    int i=0,cont=0;
     setKernelDataSegment();
-    currentProcess=div(segment,0x1000)-2;
-    ProcessTable[currentProcess].stackPointer=sp;
     for(i=0;i<8;i++){
-        if(ProcessTable[i].active && i > currentProcess){
-            currentProcess=i;
-            restoreDataSegment();
-            returnFromTimer((i+2)*0x1000,ProcessTable[currentProcess].stackPointer);
-            return;
-        }
+        if(ProcessTable[i].status!=4)
+            cont++;
     }
-    for(i=0;i<currentProcess;i++){
-        setKernelDataSegment();
-        if(ProcessTable[i].active){
-            currentProcess=i;
-            restoreDataSegment();
-            returnFromTimer((i+2)*0x1000,ProcessTable[currentProcess].stackPointer);
-            return;
-        }
-    }
+    moveToSegment(currentProcess->segment,pointerTable,&ProcessTable,70);
     restoreDataSegment();
-    returnFromTimer(segment,sp);
+    return cont;
+}
+
+
+void scheduleProcess(int currentProcessSP){
+	int tmpCurrent=-1;
+	setKernelDataSegment();
+	if(currentProcess!=0){
+		if(currentProcess->status!=4){
+			currentProcess->stackPointer = currentProcessSP;
+			if(currentProcess->status==3)
+				currentProcess->status = 1;
+			tmpCurrent = div(currentProcess->segment,0x1000)-2;
+		}
+	}
+    while(1){
+        tmpCurrent++;
+        if(tmpCurrent==7)
+            tmpCurrent=0;          
+        if(ProcessTable[tmpCurrent].status==1){
+			currentProcess = &(ProcessTable[tmpCurrent]);
+			currentProcess->status=3;
+            break;
+		}
+    }
+	restoreDataSegment();
+}
+
+void handleTimerInterrupt(){
+    secondCont++;
+	if(secondCont>99){
+		printString("TIC");
+		secondCont=0;
+	}
 }
 
 void handleInterrupt21(int ax, int bx, int cx, int dx){
@@ -340,6 +448,14 @@ void handleInterrupt21(int ax, int bx, int cx, int dx){
       case 12:
          ListFiles();
          break;
+      case 13:
+         executeWait((char*)bx);
+         break;
+      case 14:
+         ax=listProcess(bx);
+         break;
+      case 15:
+         printChar((char)bx);
       default:
          printString("Error Ocurred");
          break;   

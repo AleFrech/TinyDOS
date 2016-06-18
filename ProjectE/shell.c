@@ -3,6 +3,14 @@ void commandInterpreter(char *buffer);
 int splitBuffer(char* buffer,char * command);
 void type(char *args);
 void execute(char *args);
+
+struct PCB {
+	unsigned int status; 
+	unsigned int stackPointer;
+	unsigned int segment;
+	struct PCB *waiter; 
+}ProcessTable[8];
+
 int main(){
     enableInterrupts();
     while(1){
@@ -52,7 +60,6 @@ void type(char *args){
    }
    syscall_readFile(args,buffer);
    syscall_printString(buffer);
-   //syscall_printString("\r\n");
 }
 
 void execute(char *args){
@@ -94,6 +101,8 @@ void writeTxt(char *fileName){
   char buffer[13312];
   int i=0,offset=0,sec=0;
   currentline[0]=0x00;
+  for(i=0;i<13312;i++)
+    buffer[i]=0x0;
 	syscall_printString("->");
 	while(1){
 			currentline[0]=0x00;
@@ -118,6 +127,45 @@ void writeTxt(char *fileName){
     syscall_writeFile(fileName,buffer,sec);
 }
 
+void intToString(int number){
+	int i = 0,j=0;	
+	char buffer[10];	
+    for(j=0;j<10;j++){
+        buffer[j]=0x0;
+    }
+	while(number!=0){
+		buffer[i] = (char)mod(number,10)+48;
+    number=div(number,10);
+		i++;	
+	}	
+	for(i = 9; i != -1; i--)
+		if(buffer[i]!=0)
+			syscall_printChar(buffer[i]);
+}
+
+
+void ps(){
+    int i=0,cont=0;
+    cont=syscall_listProcess(ProcessTable);
+    syscall_printString("Number of Proccess: ");
+    intToString(cont); 
+    syscall_printString("\r\n");
+    for(i=0;i<8;i++){
+      if(ProcessTable[i].status!=4){
+        syscall_printString("id: ");
+        intToString(i+1);
+        syscall_printString(" , ");
+        syscall_printString("status: ");
+        intToString(ProcessTable[i].status);
+        syscall_printString(" , ");
+        syscall_printString("segment: 0x");
+        intToString(div(ProcessTable[i].segment,0x1000));
+        syscall_printString("000");
+        syscall_printString("\r\n");
+      }
+    }     
+}
+
 void commandInterpreter(char *buffer){
   char command[30];
   int offset = splitBuffer(buffer,command);
@@ -137,7 +185,11 @@ void commandInterpreter(char *buffer){
         syscall_killProcess(*(buffer+offset)-'0');
     }else if(strcmp("ls",command)){
         syscall_listFiles();
+    }else if(strcmp("executew",command)){
+        syscall_executew(buffer+offset);
+    }else if(strcmp("ps",command)){
+        ps();
     }else{
-        syscall_printString("Command not found\r\n"); 
+        syscall_printString("Command not found\r\n");
     }
 }

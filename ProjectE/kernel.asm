@@ -13,7 +13,10 @@
 	.global _launchProgram
 	.global _moveToSegment
 	.global _returnFromTimer
-	.global _initializeProgram
+        .global _setTimerPhase
+        .global _irqInstallHandler
+        .global _timerISR
+	;.global _initializeProgram
 	.global _setKernelDataSegment
 	.global _restoreDataSegment
 	.global _setCursor
@@ -21,7 +24,13 @@
 	.global _writeSector
 	.extern _handleInterrupt21
         .extern _handleTimerInterrupt
-	
+        .extern _scheduleProcess
+
+
+.data
+	.extern _currentProcess
+
+.text	
     
 ;void printChar(char chr);
 
@@ -223,7 +232,7 @@ jump:	jmp #0x0000:0x0000	;and start running (the first 0000 is changed above)
 ;sets up the timer's interrupt service routine
 _makeTimerInterrupt:
         cli
-        mov dx,#timer_ISR ;get address of timerISR in dx
+        mov dx,#_timerISR ;get address of timerISR in dx
 
         push ds
         mov ax,#0       ;interrupts are at lowest memory
@@ -245,46 +254,82 @@ _makeTimerInterrupt:
 	sti
         ret
 
-;this routine runs on timer interrupts
-timer_ISR:
-
-        ;disable interrupts
+; void irqInstallHandler(int irq_number, void (*fn)())
+; Install an IRQ handler
+_irqInstallHandler:
         cli
-
-        ;save all regs for the old process on the old process's stack
-        push bx
-        push cx
-        push dx
-        push si
-        push di
         push bp
-        push ax
+        mov bp, sp
+        push si 
         push ds
-        push es
+        mov dx, #_timerISR ; Function pointer
+        xor ax, ax 
+        mov ds, ax ; Interrupt vector is at lowest memory
+        mov si, #0x8
+        shl si, 2 ; ax = irq_handler * 4
+        mov ax, cs
+        mov [si + 2], ax
+        mov [si], dx
+        pop ds
+        pop si
+        pop bp
+        sti
+        ret
+        
+; void setTimerPhase(int hz) ; Set the timer frequency in Hertz
+_setTimerPhase:
+        push bp
+        mov bp, sp
+        mov dx, #0x0012 ; Default frequency of the timer is 1,193,180 Hz
+        mov ax, #0x34DC
+        mov bx, [bp+4]
+        div bx
+        mov bx, ax ; Save quotient
+        mov dx, #0x43 
+        mov al, #0x36
+        out dx, al; Set our command byte 0x36
+        mov dx, #0x40
+        mov al, bl
+        out dx, al ; Set low byte of divisor 
+        mov al, bh 
+        out dx, al; Set high byte of divisor
+        pop bp
+        ret
 
-        ;reset interrupt controller so it performs more interrupts
-        mov al,#0x20
-        out #0x20,al
-
-        ;get the segment (ss) and the stack pointer (sp) - we need to keep these
-        mov bx,ss
-        mov cx,sp
-
-        ;set all segments to the kernel
-        mov ax,#0x1000
-        mov ds,ax
-        mov es,ax
-        mov ss,ax
-        ;set the kernel's stack
-        mov ax,#0xdff0
-        mov sp,ax
-        mov bp,ax
-
-        ;call handle interrupt with 2 parameters: the segment, the stack pointer.
-	mov ax,#0
-        push cx
-        push bx
-        call _handleTimerInterrupt
+;this routine runs on timer interrupts
+_timerISR:
+    cli	
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    push ax
+    push ds
+    push es
+    mov bx,sp
+    mov al,#0x20
+    out #0x20,al
+    mov ax,#0x1000
+    mov ds,ax
+    mov ss,ax
+    mov sp,#0xfff0
+    push bx
+    call _scheduleProcess
+    mov bx, [_currentProcess]
+    mov sp,[bx+2]
+    mov ss,[bx+4]  
+    pop es
+    pop ds
+    pop ax
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    iret
 
 ;void returnFromTimer(int segment, int sp)
 ;returns from a timer interrupt to a different process
@@ -329,44 +374,44 @@ _returnFromTimer:
 ;this initializes a new program but doesn't start it running
 ;the scheduler will take care of that
 ;the program will be located at the beginning of the segment at [sp+2]
-_initializeProgram:
-        ;bx=new segment
-	push	bp
-        mov     bp,sp
-        mov     bx,[bp+4]
+;_initializeProgram:
+;        ;bx=new segment
+;	push	bp
+;        mov     bp,sp
+;        mov     bx,[bp+4]
 
 ;make a stack image so that the timer interrupt can start this program
 
         ;save the caller's stack pointer and segment
-        mov     cx,sp
-        mov     dx,ss
-        mov     ax,#0xff18      ;this allows an initial sp of 0xff00
-        mov     sp,ax
-        mov     ss,bx
-
-        mov     ax,#0   ;IP
-        push    ax
-        mov     ax,bx   ;CS
-        push    ax
-        mov     ax,#0x0         ;a normal flag setting
-        push    ax
-        mov     ax,#0           ;set all the general registers to 0
-        push    ax      ;bx
-        push    ax      ;cx
-        push    ax      ;dx
-        push    ax      ;si
-        push    ax      ;di
-        push    ax      ;bp
-        push    ax      ;ax
-        mov     ax,bx
-        push    ax      ;ds
-        push    ax      ;es
-
-        ;restore the stack to the caller
-        mov     sp,cx
-        mov     ss,dx
-	pop	bp
-        ret
+;        mov     cx,sp
+;        mov     dx,ss
+;        mov     ax,#0xff18      ;this allows an initial sp of 0xff00
+;        mov     sp,ax
+;        mov     ss,bx
+;
+;       mov     ax,#0   ;IP
+;        push    ax
+;        mov     ax,bx   ;CS
+;        push    ax
+;        mov     ax,#0x0         ;a normal flag setting
+;        push    ax
+;        mov     ax,#0           ;set all the general registers to 0
+;        push    ax      ;bx
+;        push    ax      ;cx
+;        push    ax      ;dx
+;        push    ax      ;si
+;        push    ax      ;di
+;        push    ax      ;bp
+;        push    ax      ;ax
+;       mov     ax,bx
+;        push    ax      ;ds
+;        push    ax      ;es
+;
+;        ;restore the stack to the caller
+;        mov     sp,cx
+;       mov     ss,dx
+;	pop	bp
+;        ret
 
 ;this is called when interrupt 21 happens
 ;it will call your function:
@@ -382,6 +427,8 @@ _interrupt21ServiceRoutine:
 	pop cx
 	pop dx
 	iret
+
+        
 
 ;void setKernelDataSegment()
 ;sets the data segment to the kernel, saving the current ds on the stack

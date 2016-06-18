@@ -12,6 +12,9 @@
 .global _syscall_listFiles
 .global _syscall_copyFile
 .global _syscall_killProcess
+.global _syscall_executew
+.global _syscall_listProcess
+.global _syscall_printChar
 
 _syscall_readString:
 	push bp
@@ -32,6 +35,15 @@ _syscall_terminate:
 	push bp
 	mov bp,sp
 	mov ax, #5
+	int #0x21
+	pop bp
+	ret
+
+_syscall_printChar:
+	push bp
+	mov bp,sp
+	mov ax, #15
+	mov bx,[bp+4];
 	int #0x21
 	pop bp
 	ret
@@ -80,6 +92,24 @@ _syscall_listFiles:
 	push bp
 	mov bp,sp
 	mov ax,#12
+	int #0x21
+	pop bp
+	ret
+
+_syscall_listProcess:
+	push bp
+	mov bp,sp
+	mov ax,#14
+	mov bx, [bp+4]
+	int #0x21
+	pop bp
+	ret
+
+_syscall_executew:
+	push bp
+	mov bp,sp
+	mov ax,#13
+	mov bx, [bp+4]
 	int #0x21
 	pop bp
 	ret
