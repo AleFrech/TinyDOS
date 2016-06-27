@@ -2,7 +2,6 @@ int strcmp(char *str1,char*str2);
 void commandInterpreter(char *buffer);
 int splitBuffer(char* buffer,char * command);
 void type(char *args);
-void execute(char *args);
 
 struct PCB {
 	unsigned int status; 
@@ -62,13 +61,6 @@ void type(char *args){
    syscall_printString(buffer);
 }
 
-void execute(char *args){
-   syscall_executeProgram(args);
-}
-
-void delete(char* args){
-  syscall_deleteFile(args);
-}
 
 void Copy(char *args){
   char filename1[30];
@@ -172,9 +164,9 @@ void commandInterpreter(char *buffer){
     if(strcmp("type",command)){
         type(buffer+offset);
     }else if(strcmp("execute",command)){
-        execute(buffer+offset);
+        syscall_executeProgram(buffer+offset);
     }else if(strcmp("delete",command)){
-        delete(buffer+offset);
+        syscall_deleteFile(buffer+offset);
     }else if(strcmp(command, "copy")){
         Copy(buffer+offset);
     }else if(strcmp("clear",command)){

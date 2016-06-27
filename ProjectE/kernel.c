@@ -298,10 +298,7 @@ void terminate(){
 
 void initializeProgram(int segment){
     struct regs registers;
-	registers.ds = segment;
-	registers.es = segment;
-    registers.cs = segment;
-	registers.ax = 0;
+    registers.ax = 0;
 	registers.bp = 0;
 	registers.di = 0;
 	registers.si = 0;
@@ -309,13 +306,18 @@ void initializeProgram(int segment){
 	registers.cx = 0;
 	registers.bx = 0;
 	registers.ip = 0;
+	registers.ds = segment;
+	registers.es = segment;
+    registers.cs = segment;
 	registers.flags = 0x0200;
 	moveToSegment(segment,0xff00,&registers,24);
 }
 
 void executeProgram(char* programName){
-    char buffer[13312];
     int i=0,segment=0;
+    char buffer[13312];
+    for(i=0;i<13312;i++)
+        buffer[i]=0x00;
     setKernelDataSegment();
     for(i=0;i<8;i++){
         if(ProcessTable[i].status==4){
@@ -362,7 +364,7 @@ void killProcess(int id){
 }
 
 
-int listProcess(int pointerTable[]){
+int listProcess(int* pointerTable){
     int i=0,cont=0;
     setKernelDataSegment();
     for(i=0;i<8;i++){
